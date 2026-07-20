@@ -1,0 +1,6 @@
+{
+  "name": "Glide Gunner",
+  "description": "An addictive, colorful arcade shooter with ultra-smooth touch-glide controls, levels, shooting, and Web Audio synthesised sound effects.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
