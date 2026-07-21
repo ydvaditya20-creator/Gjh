@@ -33,18 +33,18 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Build application
         run: npm run build
 
       - name: Setup Pages
-        uses: actions/configure-pages@v4
+        uses: actions/configure-pages@v5
 
       - name: Upload build artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: './dist'
+          path: './dist' # Agar aap Next.js use kar rahe hain toh ise './out' ya Vite ke liye './dist' rakhein
 
       - name: Deploy to GitHub Pages
         id: deployment
