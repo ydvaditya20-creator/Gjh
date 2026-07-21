@@ -28,7 +28,8 @@ import {
   Github,
   Search,
   Download,
-  Copy
+  Copy,
+  LogOut
 } from "lucide-react";
 import { Octokit } from "octokit";
 
@@ -45,11 +46,11 @@ import { DeleteConfirmationModal } from "./components/DeleteConfirmationModal";
 
 export default function App() {
   // --- State Variables ---
-  const [token, setToken] = useState<string>("");
-  const [repoUrl, setRepoUrl] = useState<string>("");
-  const [owner, setOwner] = useState<string>("");
-  const [repo, setRepo] = useState<string>("");
-  const [branch, setBranch] = useState<string>("main");
+  const [token, setToken] = useState<string>(() => localStorage.getItem("github_pat_token") || "");
+  const [repoUrl, setRepoUrl] = useState<string>(() => localStorage.getItem("github_repo_url") || "");
+  const [owner, setOwner] = useState<string>(() => localStorage.getItem("github_owner") || "");
+  const [repo, setRepo] = useState<string>(() => localStorage.getItem("github_repo") || "");
+  const [branch, setBranch] = useState<string>(() => localStorage.getItem("github_branch") || "main");
   
   // Repositories list fetch state
   const [userRepos, setUserRepos] = useState<{ full_name: string; name: string; owner: string; default_branch: string }[]>([]);
@@ -185,6 +186,16 @@ export default function App() {
       setIsConnected(true);
       setSuccess(`Successfully connected to ${parsed.owner}/${parsed.repo}!`);
       setCurrentPath("");
+
+      // Save credentials in browser localStorage for convenient auto-load
+      localStorage.setItem("github_pat_token", token);
+      localStorage.setItem("github_repo_url", repoUrl);
+      localStorage.setItem("github_owner", parsed.owner);
+      localStorage.setItem("github_repo", parsed.repo);
+      if (repoDetails.data.default_branch) {
+        localStorage.setItem("github_branch", repoDetails.data.default_branch);
+      }
+
       fetchContents(parsed.owner, parsed.repo, "", repoDetails.data.default_branch);
     } catch (err: any) {
       console.error("Connection error", err);
@@ -198,6 +209,28 @@ export default function App() {
     } finally {
       setIsConnecting(false);
     }
+  };
+
+  // --- Disconnect and Clear Saved Credentials ---
+  const handleDisconnect = () => {
+    setIsConnected(false);
+    setToken("");
+    setRepoUrl("");
+    setOwner("");
+    setRepo("");
+    setBranch("main");
+    setItems([]);
+    setUserRepos([]);
+    setRepoSearchQuery("");
+    
+    // Clear localStorage
+    localStorage.removeItem("github_pat_token");
+    localStorage.removeItem("github_repo_url");
+    localStorage.removeItem("github_owner");
+    localStorage.removeItem("github_repo");
+    localStorage.removeItem("github_branch");
+    
+    setSuccess("Disconnected and cleared stored credentials from your browser successfully.");
   };
 
   // --- Fetch User Repositories ---
@@ -260,6 +293,14 @@ export default function App() {
       setIsConnected(true);
       setSuccess(`Successfully connected to ${repoItem.owner}/${repoItem.name}!`);
       setCurrentPath("");
+
+      // Save credentials in browser localStorage for convenient auto-load
+      localStorage.setItem("github_pat_token", token);
+      localStorage.setItem("github_repo_url", newUrl);
+      localStorage.setItem("github_owner", repoItem.owner);
+      localStorage.setItem("github_repo", repoItem.name);
+      localStorage.setItem("github_branch", finalBranch);
+
       fetchContents(repoItem.owner, repoItem.name, "", finalBranch);
     } catch (err: any) {
       console.error("Connection error to selected repo", err);
@@ -992,6 +1033,16 @@ export default function App() {
           <span className="text-xs font-mono font-medium text-slate-700">
             {isConnected ? `${owner}/${repo} (${branch})` : "Disconnected"}
           </span>
+          {isConnected && (
+            <button
+              onClick={handleDisconnect}
+              title="Disconnect & clear saved credentials"
+              className="text-xs text-rose-600 hover:text-rose-800 font-bold ml-2 pl-2 border-l border-slate-300 flex items-center gap-1 font-sans transition-colors active:scale-95"
+            >
+              <LogOut className="h-3.5 w-3.5" />
+              Disconnect
+            </button>
+          )}
         </div>
       </header>
 
@@ -1212,6 +1263,27 @@ export default function App() {
             
             {/* Quick pre-fill button for ydvaditya20-creator */}
             <div className="flex items-center gap-2">
+              {(token || repoUrl) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    localStorage.removeItem("github_pat_token");
+                    localStorage.removeItem("github_repo_url");
+                    localStorage.removeItem("github_owner");
+                    localStorage.removeItem("github_repo");
+                    localStorage.removeItem("github_branch");
+                    setToken("");
+                    setRepoUrl("");
+                    setOwner("");
+                    setRepo("");
+                    setBranch("main");
+                    setSuccess("Cleared saved credentials from your browser.");
+                  }}
+                  className="text-xs bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 px-3 py-1 rounded-full font-mono transition-all mr-2"
+                >
+                  Clear Saved
+                </button>
+              )}
               <span className="text-xs text-slate-400 font-medium">Quick Config:</span>
               <button
                 onClick={() => {
