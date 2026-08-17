@@ -29,7 +29,10 @@ import {
   Search,
   Download,
   Copy,
-  LogOut
+  LogOut,
+  Globe,
+  Sparkles,
+  Layers
 } from "lucide-react";
 import { Octokit } from "octokit";
 
@@ -43,6 +46,7 @@ import {
 } from "./utils/githubHelpers";
 import { FileViewerModal } from "./components/FileViewerModal";
 import { DeleteConfirmationModal } from "./components/DeleteConfirmationModal";
+import { ArtifactScreen } from "./components/ArtifactScreen";
 
 export default function App() {
   // --- State Variables ---
@@ -63,6 +67,9 @@ export default function App() {
   const [isConnected, setIsConnected] = useState<boolean>(false);
   const [isConnecting, setIsConnecting] = useState<boolean>(false);
   
+  // Active Tab State
+  const [activeTab, setActiveTab] = useState<"files" | "artifact">("files");
+
   // Browsing State
   const [currentPath, setCurrentPath] = useState<string>("");
   const [items, setItems] = useState<RepoItem[]>([]);
@@ -315,12 +322,17 @@ export default function App() {
     targetOwner = owner,
     targetRepo = repo,
     path = currentPath,
-    targetBranch = branch
+    targetBranch = branch,
+    showFeedback = false
   ) => {
     setLoading(true);
     setError(null);
+    if (showFeedback) {
+      setSuccess(null);
+    }
     try {
       const octokit = getOctokit();
+
       const response = await octokit.rest.repos.getContent({
         owner: targetOwner,
         repo: targetRepo,
@@ -350,6 +362,9 @@ export default function App() {
         
         setItems(mappedItems);
         setCurrentPath(path);
+        if (showFeedback) {
+          setSuccess(`Repository files refreshed successfully! (${mappedItems.length} item${mappedItems.length === 1 ? '' : 's'})`);
+        }
       } else {
         // If it's a single file, we handle viewing
         setError("Target path is not a directory.");
@@ -360,6 +375,9 @@ export default function App() {
       if (err.status === 404 && path !== "") {
         setItems([]);
         setCurrentPath(path);
+        if (showFeedback) {
+          setSuccess("Directory is empty.");
+        }
       } else {
         setError(err.message || "Failed to fetch repository contents.");
       }
@@ -369,8 +387,8 @@ export default function App() {
   };
 
   // Trigger content refresh
-  const handleRefresh = () => {
-    fetchContents(owner, repo, currentPath, branch);
+  const handleRefresh = (showFeedback = false) => {
+    fetchContents(owner, repo, currentPath, branch, showFeedback);
   };
 
   // Navigation down into a folder
@@ -1300,7 +1318,85 @@ export default function App() {
 
         {/* --- Connected Main UI Panel --- */}
         {isConnected ? (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6" id="dashboard_panel">
+          <div className="flex flex-col gap-6" id="connected_dashboard_wrapper">
+            {/* Live Link & Quick Action Bar */}
+            <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="p-2.5 bg-teal-50 text-teal-600 rounded-xl border border-teal-200 shrink-0">
+                  <Globe className="h-5 w-5" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider font-mono">Live Repository Link</span>
+                    <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <a
+                      href={`https://${owner.toLowerCase()}.github.io/${repo}/`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm font-mono font-bold text-teal-600 hover:text-teal-700 hover:underline truncate max-w-xs sm:max-w-md"
+                      title={`https://${owner.toLowerCase()}.github.io/${repo}/`}
+                    >
+                      https://{owner.toLowerCase()}.github.io/{repo}/
+                    </a>
+                    <button
+                      onClick={() => {
+                        const url = `https://${owner.toLowerCase()}.github.io/${repo}/`;
+                        navigator.clipboard.writeText(url);
+                        setSuccess(`Copied live repository link to clipboard: ${url}`);
+                      }}
+                      className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-700 transition-colors"
+                      title="Copy Live URL"
+                    >
+                      <Copy className="h-3.5 w-3.5" />
+                    </button>
+                    <a
+                      href={`https://${owner.toLowerCase()}.github.io/${repo}/`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-teal-600 transition-colors"
+                      title="Open Live Site in New Tab"
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </a>
+                  </div>
+                </div>
+              </div>
+
+              {/* Tab navigation pills */}
+              <div className="flex items-center bg-slate-100 p-1.5 rounded-xl border border-slate-200 gap-1.5 shrink-0">
+                <button
+                  onClick={() => setActiveTab("files")}
+                  className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${
+                    activeTab === "files"
+                      ? "bg-white text-teal-700 shadow-sm"
+                      : "text-slate-600 hover:text-slate-900"
+                  }`}
+                >
+                  <Folder className="h-4 w-4 text-teal-600" />
+                  Repository Files
+                </button>
+                <button
+                  onClick={() => setActiveTab("artifact")}
+                  className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${
+                    activeTab === "artifact"
+                      ? "bg-teal-600 text-white shadow-sm"
+                      : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
+                  }`}
+                >
+                  <Sparkles className="h-4 w-4" />
+                  Live Artifact Screen
+                  <span className="text-[10px] bg-teal-500 text-white px-1.5 py-0.5 rounded-full font-mono">
+                    Live
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            {/* Tab 1: Repository Files & CRUD Manager */}
+            {activeTab === "files" ? (
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6" id="dashboard_panel">
             
             {/* --- Left Column: Repository Explorer & Directory Search (Grid span 7) --- */}
             <div className="lg:col-span-7 flex flex-col gap-6" id="explorer_column">
@@ -1332,12 +1428,13 @@ export default function App() {
                     </div>
 
                     <button
-                      onClick={handleRefresh}
+                      onClick={() => handleRefresh(true)}
                       disabled={loading}
-                      title="Refresh Directory"
-                      className="p-2 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-xl text-slate-600 hover:text-slate-900 transition-colors disabled:opacity-40"
+                      title="Live Refresh Files from GitHub (Bypasses Cache)"
+                      className="p-2 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-xl text-slate-600 hover:text-teal-700 transition-colors disabled:opacity-40 flex items-center gap-1.5 text-xs font-medium"
                     >
-                      <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+                      <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin text-teal-600" : ""}`} />
+                      <span className="hidden sm:inline">Refresh</span>
                     </button>
 
                     <button
@@ -1499,6 +1596,15 @@ export default function App() {
                           <div className="flex items-center gap-1.5 ml-4 shrink-0 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
                             {item.type === "file" && (
                               <>
+                                {(item.name.toLowerCase().endsWith(".html") || item.name.toLowerCase().endsWith(".htm")) && (
+                                  <button
+                                    onClick={() => setActiveTab("artifact")}
+                                    title="Launch in Artifact Live Screen"
+                                    className="p-1.5 hover:bg-teal-50 text-teal-600 hover:text-teal-700 border border-transparent hover:border-teal-200 rounded-lg transition-all"
+                                  >
+                                    <Sparkles className="h-4 w-4" />
+                                  </button>
+                                )}
                                 <button
                                   onClick={() => handleViewFile(item)}
                                   title="View File"
@@ -1861,6 +1967,18 @@ export default function App() {
               </div>
 
             </div>
+          </div>
+            ) : (
+              /* Tab 2: Live Web Artifact Screen */
+              <ArtifactScreen
+                owner={owner}
+                repo={repo}
+                branch={branch}
+                token={token}
+                getOctokit={getOctokit}
+                onRefreshFiles={() => handleRefresh(true)}
+              />
+            )}
           </div>
         ) : (
           /* --- Standby state (Not connected) --- */
